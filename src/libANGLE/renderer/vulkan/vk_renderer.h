@@ -149,6 +149,8 @@ class Renderer : angle::NonCopyable
                              const uint8_t *preferredDeviceUuid,
                              const uint8_t *preferredDriverUuid,
                              VkDriverId preferredDriverId,
+                             uint32_t preferredDrmRenderNodeMajor,
+                             uint32_t preferredDrmRenderNodeMinor,
                              UseDebugLayers useDebugLayers,
                              const char *wsiExtension,
                              const char *wsiLayer,

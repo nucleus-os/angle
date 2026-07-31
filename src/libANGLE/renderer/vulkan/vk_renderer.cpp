@@ -18,6 +18,8 @@
 #include "libANGLE/renderer/vulkan/vk_utils.h"
 
 #include <EGL/eglext.h>
+#include <algorithm>
+#include <cstring>
 #include <fstream>
 
 #include "common/debug.h"
@@ -2463,6 +2465,8 @@ angle::Result Renderer::initialize(vk::ErrorContext *context,
                                    const uint8_t *preferredDeviceUuid,
                                    const uint8_t *preferredDriverUuid,
                                    VkDriverId preferredDriverId,
+                                   uint32_t preferredDrmRenderNodeMajor,
+                                   uint32_t preferredDrmRenderNodeMinor,
                                    UseDebugLayers useDebugLayers,
                                    const char *wsiExtension,
                                    const char *wsiLayer,
@@ -2689,6 +2693,38 @@ angle::Result Renderer::initialize(vk::ErrorContext *context,
     std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
     ANGLE_VK_TRY(context, vkEnumeratePhysicalDevices(mInstance, &physicalDeviceCount,
                                                      physicalDevices.data()));
+    if (preferredDrmRenderNodeMajor != 0 || preferredDrmRenderNodeMinor != 0)
+    {
+        std::erase_if(physicalDevices, [&](VkPhysicalDevice physicalDevice) {
+            uint32_t extensionCount = 0;
+            if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount,
+                                                     nullptr) != VK_SUCCESS)
+            {
+                return true;
+            }
+            std::vector<VkExtensionProperties> extensions(extensionCount);
+            if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount,
+                                                     extensions.data()) != VK_SUCCESS ||
+                std::none_of(extensions.begin(), extensions.end(), [](const auto &extension) {
+                    return strcmp(extension.extensionName,
+                                  VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME) == 0;
+                }))
+            {
+                return true;
+            }
+
+            VkPhysicalDeviceDrmPropertiesEXT drmProperties = {};
+            drmProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
+            VkPhysicalDeviceProperties2 properties = {};
+            properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+            properties.pNext = &drmProperties;
+            vkGetPhysicalDeviceProperties2(physicalDevice, &properties);
+            return !drmProperties.hasRender ||
+                   drmProperties.renderMajor != preferredDrmRenderNodeMajor ||
+                   drmProperties.renderMinor != preferredDrmRenderNodeMinor;
+        });
+        ANGLE_VK_CHECK(context, !physicalDevices.empty(), VK_ERROR_INITIALIZATION_FAILED);
+    }
     ChoosePhysicalDevice(vkGetPhysicalDeviceProperties2, physicalDevices, mEnabledICD,
                          preferredVendorId, preferredDeviceId, preferredDeviceUuid,
                          preferredDriverUuid, preferredDriverId, &mPhysicalDevice,
@@ -3996,10 +4032,26 @@ void Renderer::enableDeviceExtensionsNotPromoted(const vk::ExtensionNameList &de
     {
         mEnabledDeviceExtensions.push_back(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     }
+#if defined(ANGLE_PLATFORM_LINUX)
+    // Chromium borrows ANGLE's Vulkan device for native-pixmap shared images.
+    // Linux DMA-BUF ownership transfers use VK_QUEUE_FAMILY_FOREIGN_EXT, so
+    // the device that actually records those barriers must enable its defining
+    // extension as well.
+    if (mFeatures.supportsExternalMemoryDmaBuf.enabled &&
+        ExtensionFound(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME, deviceExtensionNames))
+    {
+        mEnabledDeviceExtensions.push_back(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
+    }
+#endif
 
     if (mFeatures.supportsImageDrmFormatModifier.enabled)
     {
         mEnabledDeviceExtensions.push_back(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
+        if (!mFeatures.supportsImageFormatList.enabled &&
+            ExtensionFound(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME, deviceExtensionNames))
+        {
+            mEnabledDeviceExtensions.push_back(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
+        }
     }
 
     if (mFeatures.supportsExternalMemoryHost.enabled)
@@ -5555,7 +5607,9 @@ void Renderer::initFeatures(const vk::ExtensionNameList &deviceExtensionNames,
 
     ANGLE_FEATURE_CONDITION(
         &mFeatures, supportsSharedPresentableImageExtension,
-        ExtensionFound(VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME, deviceExtensionNames));
+        useVulkanSwapchain == UseVulkanSwapchain::Yes &&
+            ExtensionFound(VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME,
+                           deviceExtensionNames));
 
     ANGLE_FEATURE_CONDITION(&mFeatures, supportsGetMemoryRequirements2, true);
 
@@ -5639,7 +5693,8 @@ void Renderer::initFeatures(const vk::ExtensionNameList &deviceExtensionNames,
 
     ANGLE_FEATURE_CONDITION(
         &mFeatures, supportsIncrementalPresent,
-        ExtensionFound(VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME, deviceExtensionNames));
+        useVulkanSwapchain == UseVulkanSwapchain::Yes &&
+            ExtensionFound(VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME, deviceExtensionNames));
 
 #if defined(ANGLE_PLATFORM_ANDROID)
     ANGLE_FEATURE_CONDITION(

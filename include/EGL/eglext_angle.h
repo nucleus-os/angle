@@ -113,6 +113,12 @@
 #define EGL_PLATFORM_ANGLE_VULKAN_DRIVER_ID_ANGLE 0x34F2
 #endif /* EGL_ANGLE_platform_angle_vulkan_device_uuid */
 
+#ifndef EGL_ANGLE_platform_angle_drm_render_node
+#define EGL_ANGLE_platform_angle_drm_render_node 1
+#define EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MAJOR_ANGLE 0x34F9
+#define EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MINOR_ANGLE 0x34FA
+#endif /* EGL_ANGLE_platform_angle_drm_render_node */
+
 #ifndef EGL_ANGLE_platform_angle_metal
 #define EGL_ANGLE_platform_angle_metal 1
 #define EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE 0x3489

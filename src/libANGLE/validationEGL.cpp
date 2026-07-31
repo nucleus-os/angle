@@ -692,7 +692,9 @@ bool ValidateGetPlatformDisplayCommon(const ValidationContext *val,
         bool presentPathSpecified    = false;
         bool luidSpecified           = false;
         bool deviceIdSpecified       = false;
-        bool vkDeviceUuidSpecified   = false;
+        bool vkDeviceSelectionSpecified = false;
+        bool drmRenderNodeMajorSpecified = false;
+        bool drmRenderNodeMinorSpecified = false;
 
         Optional<EGLAttrib> majorVersion;
         Optional<EGLAttrib> minorVersion;
@@ -863,7 +865,15 @@ bool ValidateGetPlatformDisplayCommon(const ValidationContext *val,
                 case EGL_PLATFORM_ANGLE_VULKAN_DEVICE_UUID_ANGLE:
                 case EGL_PLATFORM_ANGLE_VULKAN_DRIVER_UUID_ANGLE:
                 case EGL_PLATFORM_ANGLE_VULKAN_DRIVER_ID_ANGLE:
-                    vkDeviceUuidSpecified = true;
+                    vkDeviceSelectionSpecified = true;
+                    break;
+                case EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MAJOR_ANGLE:
+                    vkDeviceSelectionSpecified = true;
+                    drmRenderNodeMajorSpecified = true;
+                    break;
+                case EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MINOR_ANGLE:
+                    vkDeviceSelectionSpecified = true;
+                    drmRenderNodeMinorSpecified = true;
                     break;
 
                 case EGL_PLATFORM_ANGLE_DEVICE_CONTEXT_VOLATILE_CGL_ANGLE:
@@ -1027,7 +1037,7 @@ bool ValidateGetPlatformDisplayCommon(const ValidationContext *val,
             }
         }
 
-        if (vkDeviceUuidSpecified)
+        if (vkDeviceSelectionSpecified)
         {
             if (platformType != EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE)
             {
@@ -1039,6 +1049,13 @@ bool ValidateGetPlatformDisplayCommon(const ValidationContext *val,
                               "EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE.");
                 return false;
             }
+        }
+        if (drmRenderNodeMajorSpecified != drmRenderNodeMinorSpecified)
+        {
+            val->setError(
+                EGL_BAD_ATTRIBUTE,
+                "ANGLE DRM render-node major and minor attributes must be specified together.");
+            return false;
         }
 
         if (deviceIdSpecified)

@@ -52,8 +52,9 @@ angle::Result CLPlatformVk::initBackendRenderer()
     featureOverrides.disabled.push_back("verifyPipelineCacheInBlobCache");
 
     ANGLE_TRY(mRenderer->initialize(this, this, angle::vk::ICD::Default, 0, 0, nullptr, nullptr,
-                                    static_cast<VkDriverId>(0), kUseDebugLayers, getWSIExtension(),
-                                    getWSILayer(), getWindowSystem(), featureOverrides));
+                                    static_cast<VkDriverId>(0), 0, 0, kUseDebugLayers,
+                                    getWSIExtension(), getWSILayer(), getWindowSystem(),
+                                    featureOverrides));
 
     return angle::Result::Continue;
 }
