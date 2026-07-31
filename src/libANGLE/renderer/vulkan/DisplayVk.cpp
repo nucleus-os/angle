@@ -178,12 +178,17 @@ egl::Error DisplayVk::initialize(egl::Display *display)
         attribs.get(EGL_PLATFORM_ANGLE_VULKAN_DEVICE_UUID_ANGLE, 0));
     const uint8_t *preferredDriverUuid = reinterpret_cast<const uint8_t *>(
         attribs.get(EGL_PLATFORM_ANGLE_VULKAN_DRIVER_UUID_ANGLE, 0));
+    const uint32_t preferredDrmRenderNodeMajor = static_cast<uint32_t>(
+        attribs.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MAJOR_ANGLE, 0));
+    const uint32_t preferredDrmRenderNodeMinor = static_cast<uint32_t>(
+        attribs.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MINOR_ANGLE, 0));
     const VkDriverId preferredDriverId =
         static_cast<VkDriverId>(attribs.get(EGL_PLATFORM_ANGLE_VULKAN_DRIVER_ID_ANGLE, 0));
 
     angle::Result result = mRenderer->initialize(
         this, this, desiredICD, preferredVendorId, preferredDeviceId, preferredDeviceUuid,
-        preferredDriverUuid, preferredDriverId, useDebugLayers, getWSIExtension(), getWSILayer(),
+        preferredDriverUuid, preferredDriverId, preferredDrmRenderNodeMajor,
+        preferredDrmRenderNodeMinor, useDebugLayers, getWSIExtension(), getWSILayer(),
         getWindowSystem(), mState.featureOverrides);
     ANGLE_TRY(angle::ToEGL(result, EGL_NOT_INITIALIZED));
 

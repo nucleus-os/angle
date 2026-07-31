@@ -184,6 +184,8 @@ struct ANGLEPlatformDisplay
                          EGLAttrib platformANGLEType,
                          EGLAttrib deviceIdHigh,
                          EGLAttrib deviceIdLow,
+                         EGLAttrib drmRenderNodeMajor,
+                         EGLAttrib drmRenderNodeMinor,
                          EGLAttrib displayKey,
                          EGLAttrib nativePlatformType,
                          EGLAttrib enabledFeatureOverrides,
@@ -194,6 +196,8 @@ struct ANGLEPlatformDisplay
           platformANGLEType(platformANGLEType),
           deviceIdHigh(deviceIdHigh),
           deviceIdLow(deviceIdLow),
+          drmRenderNodeMajor(drmRenderNodeMajor),
+          drmRenderNodeMinor(drmRenderNodeMinor),
           displayKey(displayKey),
           nativePlatformType(nativePlatformType),
           disableAllNonOverriddenFeatures(static_cast<bool>(disableAllNonOverriddenFeatures))
@@ -207,8 +211,10 @@ struct ANGLEPlatformDisplay
     auto tie() const
     {
         return std::tie(nativeDisplayType, powerPreference, platformANGLEType, deviceIdHigh,
-                        deviceIdLow, displayKey, nativePlatformType, enabledFeatureOverridesHash,
-                        disabledFeatureOverridesHash, disableAllNonOverriddenFeatures);
+                        deviceIdLow, drmRenderNodeMajor, drmRenderNodeMinor, displayKey,
+                        nativePlatformType, enabledFeatureOverridesHash,
+                        disabledFeatureOverridesHash,
+                        disableAllNonOverriddenFeatures);
     }
 
     EGLNativeDisplayType nativeDisplayType{EGL_DEFAULT_DISPLAY};
@@ -216,6 +222,8 @@ struct ANGLEPlatformDisplay
     EGLAttrib platformANGLEType{EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE};
     EGLAttrib deviceIdHigh{0};
     EGLAttrib deviceIdLow{0};
+    EGLAttrib drmRenderNodeMajor{0};
+    EGLAttrib drmRenderNodeMinor{0};
     EGLAttrib displayKey{0};
     EGLAttrib nativePlatformType{0};
     size_t enabledFeatureOverridesHash;
@@ -827,6 +835,10 @@ Display *Display::GetDisplayFromNativeDisplay(EGLenum platform,
         updatedAttribMap.get(EGL_PLATFORM_ANGLE_TYPE_ANGLE, EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE);
     const EGLAttrib deviceIdHigh = updatedAttribMap.get(EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE, 0);
     const EGLAttrib deviceIdLow  = updatedAttribMap.get(EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE, 0);
+    const EGLAttrib drmRenderNodeMajor =
+        updatedAttribMap.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MAJOR_ANGLE, 0);
+    const EGLAttrib drmRenderNodeMinor =
+        updatedAttribMap.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MINOR_ANGLE, 0);
     const EGLAttrib displayKey   = updatedAttribMap.get(EGL_PLATFORM_ANGLE_DISPLAY_KEY_ANGLE, 0);
     const EGLAttrib enabledFeatureOverrides =
         updatedAttribMap.get(EGL_FEATURE_OVERRIDES_ENABLED_ANGLE, 0);
@@ -836,9 +848,9 @@ Display *Display::GetDisplayFromNativeDisplay(EGLenum platform,
         updatedAttribMap.get(EGL_FEATURE_ALL_DISABLED_ANGLE, 0);
     const EGLAttrib nativePlatformType = GetPlatformTypeFromAttribs(platform, updatedAttribMap);
     const ANGLEPlatformDisplay combinedDisplayKey(
-        nativeDisplay, powerPreference, platformANGLEType, deviceIdHigh, deviceIdLow, displayKey,
-        nativePlatformType, enabledFeatureOverrides, disabledFeatureOverrides,
-        disableAllNonOverriddenFeatures);
+        nativeDisplay, powerPreference, platformANGLEType, deviceIdHigh, deviceIdLow,
+        drmRenderNodeMajor, drmRenderNodeMinor, displayKey, nativePlatformType,
+        enabledFeatureOverrides, disabledFeatureOverrides, disableAllNonOverriddenFeatures);
 
     {
         std::lock_guard<angle::SimpleMutex> lock(*ANGLEPlatformDisplayMapMutex());
@@ -1010,6 +1022,10 @@ Display::~Display()
                                   EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE),
                 mAttributeMap.get(EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE, 0),
                 mAttributeMap.get(EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE, 0),
+                mAttributeMap.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MAJOR_ANGLE,
+                                  0),
+                mAttributeMap.get(EGL_PLATFORM_ANGLE_DRM_RENDER_NODE_MINOR_ANGLE,
+                                  0),
                 mAttributeMap.get(EGL_PLATFORM_ANGLE_DISPLAY_KEY_ANGLE, 0),
                 GetPlatformTypeFromAttribs(mPlatform, mAttributeMap),
                 mAttributeMap.get(EGL_FEATURE_OVERRIDES_ENABLED_ANGLE, 0),
